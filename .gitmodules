@@ -1,0 +1,3 @@
+[submodule "paper-search-mcp"]
+	path = paper-search-mcp
+	url = https://github.com/openags/paper-search-mcp.git

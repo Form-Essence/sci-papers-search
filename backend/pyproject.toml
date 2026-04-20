@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paper-search-backend"
+version = "0.1.0"
+description = "FastAPI wrapper around paper-search-mcp for the manual-search web UI."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.5.0",
+    "paper-search-mcp",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.uv.sources]
+paper-search-mcp = { path = "../paper-search-mcp", editable = true }

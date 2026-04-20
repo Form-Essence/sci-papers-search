@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# Backend / downloads
+downloads/
+
+# Runtime artefacts
+logs/
+
+# Secrets — the single source of truth. Commit mcp-config.example.json instead.
+mcp-config.json
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
