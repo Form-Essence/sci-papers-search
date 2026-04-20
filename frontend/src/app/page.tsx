@@ -47,9 +47,26 @@ export default function Home() {
         year: values.year || null,
       });
       setResponse(res);
-      if (res.total === 0) {
+
+      const errorEntries = Object.entries(res.errors);
+      if (errorEntries.length > 0) {
+        const sourceLabels: Record<string, string> = Object.fromEntries(
+          availableSources.map((s) => [s.key, s.label]),
+        );
+        for (const [src, message] of errorEntries) {
+          toast.warning(`${sourceLabels[src] ?? src} unavailable`, {
+            description: message || "Source failed. Other sources continued.",
+          });
+        }
+      }
+
+      if (res.total === 0 && errorEntries.length === 0) {
         toast.warning("No results", {
           description: `No papers matched "${values.query}" on the selected sources.`,
+        });
+      } else if (res.total === 0 && errorEntries.length > 0) {
+        toast.info("No results from responding sources", {
+          description: `${errorEntries.length} source(s) failed; the rest returned no matches for "${values.query}".`,
         });
       }
     } catch (err) {

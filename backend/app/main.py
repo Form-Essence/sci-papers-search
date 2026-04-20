@@ -27,6 +27,7 @@ APP_CONFIG = load_config()
 from paper_search_mcp import server as mcp_server  # noqa: E402
 from paper_search_mcp.server import mcp as paper_mcp  # noqa: E402
 
+from .aggregator import search_papers_with_timeout  # noqa: E402
 from .mcp_auth import BearerAuthMiddleware  # noqa: E402
 from .schemas import (  # noqa: E402
     DownloadRequest,
@@ -83,16 +84,6 @@ app.add_middleware(
 )
 
 
-def _resolve_sources(requested: list[str]) -> str:
-    """Convert UI source list into the comma-joined format expected by the MCP server."""
-    if not requested:
-        return "all"
-    lowered = [s.strip().lower() for s in requested if s and s.strip()]
-    if not lowered or "all" in lowered:
-        return "all"
-    return ",".join(lowered)
-
-
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -105,21 +96,21 @@ async def list_sources() -> SourcesResponse:
 
 @app.post("/api/search", response_model=SearchResponse)
 async def search(req: SearchRequest) -> SearchResponse:
-    sources_str = _resolve_sources(req.sources)
     try:
-        result = await mcp_server.search_papers(
+        result = await search_papers_with_timeout(
             query=req.query,
+            sources=req.sources,
             max_results_per_source=req.max_results_per_source,
-            sources=sources_str,
             year=req.year,
+            per_source_timeout=APP_CONFIG.server.per_source_timeout,
         )
-    except Exception as exc:  # defensive; search_papers already captures per-source errors
-        logger.exception("search_papers failed")
+    except Exception as exc:  # defensive; aggregator catches per-source failures already
+        logger.exception("search_papers_with_timeout failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return SearchResponse(
         query=result.get("query", req.query),
-        sources_requested=[sources_str],
+        sources_requested=[result.get("sources_requested", "all")],
         sources_used=list(result.get("sources_used", [])),
         source_results=dict(result.get("source_results", {})),
         errors=dict(result.get("errors", {})),

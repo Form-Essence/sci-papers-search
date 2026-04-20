@@ -116,6 +116,46 @@ PAPER_SEARCH_MCP_PUBLIC_URL=https://papers.example.com ./scripts/gen-token.sh
 
 > **Security.** `/mcp` is bearer-token gated; `/` and `/api/*` are **not**. If you expose the whole host publicly, either restrict the tunnel ingress to `/mcp*`, put Cloudflare Access in front of the hostname, or keep the UI on a LAN-only path.
 
+## Generating / rotating the bearer token
+
+The bearer token that protects `/mcp` lives in `mcp-config.json` under `auth_token`. **Never edit it by hand** — always use the helper script so the matching client snippets under `clients.*` stay in sync.
+
+```bash
+./scripts/gen-token.sh
+```
+
+What it does:
+
+1. Generates a fresh URL-safe random secret (`secrets.token_urlsafe(32)` — 256 bits of entropy, ~43 chars).
+2. Writes it to `auth_token` in `mcp-config.json`, preserving `server.*` (host, port, CORS, API keys).
+3. Regenerates every `clients.*` snippet (Cursor, LM Studio, opencode, OpenAI, curl) with the new token baked in.
+4. `chmod 600 mcp-config.json` so only your user can read it.
+
+Bake a public URL into the snippets (useful when you expose the service over a Cloudflare Tunnel):
+
+```bash
+PAPER_SEARCH_MCP_PUBLIC_URL=https://papers.example.com ./scripts/gen-token.sh
+```
+
+After rotating, **restart the server** so it picks up the new token, then re-paste the snippet into each client:
+
+```bash
+./stop.sh && ./start.sh          # PM2
+# or just Ctrl-C and rerun ./scripts/dev.sh
+```
+
+Prefer a specific token (e.g. one issued by a password manager)? Generate it yourself and plug it in — the server only cares that `auth_token` matches the `Authorization: Bearer …` header. You can use any of:
+
+```bash
+openssl rand -base64 32 | tr -d '=+/' | cut -c1-43
+python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+head -c 32 /dev/urandom | base64 | tr -d '=+/' | cut -c1-43
+```
+
+Then edit `mcp-config.json` manually (set `auth_token` and update each `Authorization` header under `clients.*`) and restart the server. Running `gen-token.sh` again will overwrite this custom token with a fresh random one.
+
+> If the token ever leaks — committed to git, pasted in a screenshot, sent in chat — rotate immediately with `./scripts/gen-token.sh`, restart, and re-paste into every client.
+
 ## Hook up a client
 
 After `gen-token.sh` runs, ready-to-paste snippets sit under `clients.*` in `mcp-config.json`. Shapes below — replace `https://papers.example.com` and `<TOKEN>` with yours.
@@ -133,7 +173,20 @@ After `gen-token.sh` runs, ready-to-paste snippets sit under `clients.*` in `mcp
 }
 ```
 
-**LM Studio** — Settings → Program → Model Context Protocol → Install → paste the same `mcpServers` block.
+**LM Studio** (≥ 0.3.17) — in the chat window, open the right-hand **Program** sidebar → **Install** → **Edit mcp.json**, then paste:
+
+```json
+{
+  "mcpServers": {
+    "paper-search": {
+      "url": "https://papers.example.com/mcp",
+      "headers": { "Authorization": "Bearer <TOKEN>" }
+    }
+  }
+}
+```
+
+Save, toggle the `paper-search` server on, then start a chat with a tool-use-capable model — the `paper-search` tools will appear in the tools list. If the server runs on a different machine than LM Studio, replace `localhost` / `papers.example.com` with the reachable hostname or LAN IP (and make sure `server.cors_origins` / the tunnel ingress allows it).
 
 **opencode** — `~/.config/opencode/opencode.json`:
 

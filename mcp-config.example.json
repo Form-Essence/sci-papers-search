@@ -7,6 +7,7 @@
     "host": "0.0.0.0",
     "port": 3636,
     "cors_origins": ["*"],
+    "per_source_timeout": 25,
     "api_keys": {
       "unpaywall_email": "",
       "core_api_key": "",

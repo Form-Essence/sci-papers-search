@@ -44,6 +44,7 @@ class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 3636
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    per_source_timeout: float = 25.0
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,7 @@ def load_config(path: Path | None = None, reload: bool = False) -> AppConfig:
             host=str(server_raw.get("host") or "0.0.0.0"),
             port=int(server_raw.get("port") or 3636),
             cors_origins=cors_origins,
+            per_source_timeout=float(server_raw.get("per_source_timeout") or 25.0),
         ),
         raw=data,
     )
