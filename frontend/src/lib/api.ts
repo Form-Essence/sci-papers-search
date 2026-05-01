@@ -47,6 +47,22 @@ export type SourcesResponse = {
   sources: SourceInfo[];
 };
 
+export type McpClientSnippet = {
+  id: string;
+  label: string;
+  language: "json" | "bash" | "python" | "javascript";
+  filename?: string | null;
+  instructions: string;
+  snippet: string;
+};
+
+export type McpConfigResponse = {
+  public_url: string;
+  mcp_url: string;
+  auth_token_present: boolean;
+  clients: McpClientSnippet[];
+};
+
 export type DownloadRequest = {
   source: string;
   paper_id: string;
@@ -68,6 +84,7 @@ async function request<T>(
   const { json, headers, ...rest } = init;
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(headers ?? {}),
@@ -92,8 +109,51 @@ async function request<T>(
   return (await res.json()) as T;
 }
 
+export type MeResponse = {
+  authenticated: boolean;
+  ui_gate?: boolean;
+};
+
+export async function fetchMe(): Promise<MeResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/me`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) {
+    throw new Error(
+      "Could not load session from the API. If you run `pnpm dev`, set NEXT_PUBLIC_API_BASE_URL " +
+        "to your FastAPI URL (e.g. http://localhost:3636) so /api/me hits the backend.",
+    );
+  }
+  return (await res.json()) as MeResponse;
+}
+
+export async function loginUi(password: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/login`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    throw new Error("Incorrect password");
+  }
+}
+
+export async function logoutUi(): Promise<void> {
+  await fetch(`${API_BASE_URL}/api/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+}
+
 export function fetchSources(): Promise<SourcesResponse> {
   return request<SourcesResponse>("/api/sources", { method: "GET" });
+}
+
+export function fetchMcpConfig(): Promise<McpConfigResponse> {
+  return request<McpConfigResponse>("/api/mcp-config", { method: "GET" });
 }
 
 export function searchPapers(req: SearchRequest): Promise<SearchResponse> {

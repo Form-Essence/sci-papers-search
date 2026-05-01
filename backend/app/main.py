@@ -7,6 +7,10 @@ One uvicorn process on one port serves three surfaces:
 - ``/mcp``    → paper-search-mcp streamable-http endpoint, bearer-token protected
 
 Host/port and CORS origins live in ``mcp-config.json`` at the repo root.
+Optional ``ui_password`` enables a server-side-only gate: the UI loads, but
+``/api/*`` (except login/me/health/docs) requires an HMAC-signed session cookie
+after ``POST /api/login``, same pattern as RAG_horizon.
+
 Run with: ``python -m uvicorn app.main:app --host <host> --port <port>``.
 """
 
@@ -16,8 +20,9 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import REPO_ROOT, load_config
@@ -28,15 +33,18 @@ from paper_search_mcp import server as mcp_server  # noqa: E402
 from paper_search_mcp.server import mcp as paper_mcp  # noqa: E402
 
 from .aggregator import search_papers_with_timeout  # noqa: E402
+from .clients import build_client_snippets  # noqa: E402
 from .mcp_auth import BearerAuthMiddleware  # noqa: E402
 from .schemas import (  # noqa: E402
     DownloadRequest,
     DownloadResponse,
+    McpConfigResponse,
     SearchRequest,
     SearchResponse,
     SourcesResponse,
 )
 from .sources import build_source_list  # noqa: E402
+from .ui_auth import UI_SESSION_COOKIE, register_ui_auth, ui_session_token_valid  # noqa: E402
 
 logger = logging.getLogger("paper_search")
 logging.basicConfig(level=logging.INFO)
@@ -89,9 +97,32 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/me", response_model=None)
+async def ui_me(request: Request):
+    if not APP_CONFIG.ui_password:
+        return {"authenticated": True, "ui_gate": False}
+    session = request.cookies.get(UI_SESSION_COOKIE)
+    if ui_session_token_valid(APP_CONFIG, session):
+        return {"authenticated": True, "ui_gate": True}
+    return JSONResponse({"authenticated": False, "ui_gate": True}, status_code=401)
+
+
 @app.get("/api/sources", response_model=SourcesResponse)
 async def list_sources() -> SourcesResponse:
     return SourcesResponse(sources=build_source_list(list(mcp_server.ALL_SOURCES)))
+
+
+@app.get("/api/mcp-config", response_model=McpConfigResponse)
+async def mcp_config() -> McpConfigResponse:
+    public = APP_CONFIG.public_url.rstrip("/")
+    mcp_url = f"{public}/mcp"
+    token = APP_CONFIG.auth_token or "<YOUR_TOKEN>"
+    return build_client_snippets(
+        public_url=public,
+        mcp_url=mcp_url,
+        token=token,
+        token_present=bool(APP_CONFIG.auth_token),
+    )
 
 
 @app.post("/api/search", response_model=SearchResponse)
@@ -140,6 +171,18 @@ async def download(req: DownloadRequest) -> DownloadResponse:
         return DownloadResponse(ok=True, message="Downloaded.", path=result)
 
     return DownloadResponse(ok=False, message=str(result))
+
+
+# UI login/logout routes must be registered *before* ``mount("/", StaticFiles)``.
+# Otherwise the catch-all static mount handles ``POST /api/login`` and login never works.
+if APP_CONFIG.ui_password:
+    logger.info("UI password gate enabled (HMAC session cookie).")
+    register_ui_auth(app, APP_CONFIG)
+else:
+    logger.info(
+        "UI login gate is off — set non-empty ui_password in mcp-config.json "
+        "and restart to show the password screen.",
+    )
 
 
 class _McpMountAdapter:

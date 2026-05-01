@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "paper-search": {
+      "type": "remote",
+      "url": "http://localhost:3636/mcp",
+      "headers": {
+        "Authorization": "Bearer boJu_v5QInR609CB8rgfsGM3T-F2AmRbjNqpo3gkl1k"
+      },
+      "enabled": true
+    }
+  }
+}

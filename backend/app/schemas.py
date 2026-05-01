@@ -6,7 +6,7 @@ so that the FastAPI wrapper can pass results through unchanged.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -83,3 +83,23 @@ class SourceInfo(BaseModel):
 
 class SourcesResponse(BaseModel):
     sources: List[SourceInfo]
+
+
+class McpClientSnippet(BaseModel):
+    id: str
+    label: str
+    language: Literal["json", "bash", "python", "javascript"]
+    filename: Optional[str] = None
+    instructions: str
+    snippet: str
+
+
+class McpConfigResponse(BaseModel):
+    public_url: str
+    mcp_url: str
+    auth_token_present: bool
+    clients: List[McpClientSnippet]
+
+
+class LoginRequest(BaseModel):
+    password: str = Field(..., min_length=1)

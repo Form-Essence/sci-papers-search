@@ -53,6 +53,8 @@ class AppConfig:
     public_url: str
     server: ServerConfig
     raw: dict[str, Any]
+    ui_password: str = ""
+    session_secret: str = ""
 
 
 _LOADED: AppConfig | None = None
@@ -98,6 +100,8 @@ def load_config(path: Path | None = None, reload: bool = False) -> AppConfig:
             per_source_timeout=float(server_raw.get("per_source_timeout") or 25.0),
         ),
         raw=data,
+        ui_password=str(data.get("ui_password") or "").strip(),
+        session_secret=str(data.get("session_secret") or "").strip(),
     )
 
     for cfg_key, env_name in _API_KEY_ENV_MAP.items():

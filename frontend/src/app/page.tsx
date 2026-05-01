@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { ConnectMcpDialog } from "@/components/connect-mcp-dialog";
 import { ResultsGrid } from "@/components/results-grid";
 import { SearchForm, type SearchFormValues } from "@/components/search-form";
+import { UiLoginGate, UiSignOutButton } from "@/components/ui-login-gate";
 import {
   fetchSources,
   searchPapers,
@@ -13,6 +15,14 @@ import {
 } from "@/lib/api";
 
 export default function Home() {
+  return (
+    <UiLoginGate>
+      <HomeContent />
+    </UiLoginGate>
+  );
+}
+
+function HomeContent() {
   const [availableSources, setAvailableSources] = useState<SourceInfo[]>([]);
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -80,22 +90,28 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Paper Search</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Manual search interface for the{" "}
-          <a
-            href="https://github.com/openags/paper-search-mcp"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            paper-search-mcp
-          </a>{" "}
-          server. The same backend library also exposes an MCP server so any
-          MCP-capable LLM client (Claude, LM Studio, OpenAI, Cursor) can use
-          these sources as tools.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight">Paper Search</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Manual search interface for the{" "}
+            <a
+              href="https://github.com/openags/paper-search-mcp"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              paper-search-mcp
+            </a>{" "}
+            server. The same backend library also exposes an MCP server so any
+            MCP-capable LLM client (Claude, LM Studio, OpenAI, Cursor) can use
+            these sources as tools.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <UiSignOutButton />
+          <ConnectMcpDialog />
+        </div>
       </header>
 
       <SearchForm
@@ -108,3 +124,4 @@ export default function Home() {
     </main>
   );
 }
+
