@@ -114,7 +114,6 @@ export function UiLoginGate({ children }: { children: React.ReactNode }) {
                   name="password"
                   type="password"
                   autoComplete="current-password"
-                  placeholder="Password from mcp-config.json"
                   disabled={loginBusy}
                   required
                 />
@@ -143,21 +142,7 @@ export function UiLoginGate({ children }: { children: React.ReactNode }) {
           className="border-b border-amber-500/35 bg-amber-500/10 px-4 py-2.5 text-center text-sm text-amber-950 dark:text-amber-50"
           role="status"
         >
-          <strong className="font-medium">UI password is not enabled</strong>
-          {" — "}
-          add{" "}
-          <code className="rounded bg-background/80 px-1.5 py-0.5 font-mono text-xs">
-            ui_password
-          </code>{" "}
-          to{" "}
-          <code className="rounded bg-background/80 px-1.5 py-0.5 font-mono text-xs">
-            mcp-config.json
-          </code>
-          , restart the server, then rebuild the UI (
-          <code className="rounded bg-background/80 px-1 font-mono text-xs">
-            pnpm build
-          </code>
-          ) if you serve static files from FastAPI.
+          This deployment does not require a UI password yet. Ask whoever runs the server to turn on password protection if you need it.
         </div>
       ) : null}
       {children}
