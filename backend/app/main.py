@@ -19,6 +19,9 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
+
+from mcp.server.transport_security import TransportSecuritySettings
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,6 +58,32 @@ logging.basicConfig(level=logging.INFO)
 # mount strips the prefix before dispatching — so the internal route must be
 # ``/`` to match what arrives. Mutate before ``streamable_http_app()`` is called.
 paper_mcp.settings.streamable_http_path = "/"
+
+# FastMCP defaults ``host=127.0.0.1``, which turns on MCP DNS rebinding protection
+# with localhost-only ``allowed_hosts``. Valid Bearer requests then fail with 421
+# "Invalid Host header" when clients use ``public_url`` (e.g. Open Code over HTTPS).
+_parsed_public = urlparse(APP_CONFIG.public_url)
+_public_hostname = (_parsed_public.hostname or "").strip()
+_ts = paper_mcp.settings.transport_security
+if _ts is not None and _ts.enable_dns_rebinding_protection and _public_hostname:
+    hosts = list(_ts.allowed_hosts)
+    for h in (_public_hostname, f"{_public_hostname}:*"):
+        if h not in hosts:
+            hosts.append(h)
+    origins = list(_ts.allowed_origins)
+    if _parsed_public.scheme in ("http", "https"):
+        for o in (
+            f"{_parsed_public.scheme}://{_public_hostname}",
+            f"{_parsed_public.scheme}://{_public_hostname}:*",
+        ):
+            if o not in origins:
+                origins.append(o)
+    paper_mcp.settings.transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=_ts.enable_dns_rebinding_protection,
+        allowed_hosts=hosts,
+        allowed_origins=origins,
+    )
+
 _mcp_app = paper_mcp.streamable_http_app()
 if APP_CONFIG.auth_token:
     _mcp_app.add_middleware(
