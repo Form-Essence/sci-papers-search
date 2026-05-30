@@ -2,8 +2,8 @@
 
 Each builder returns an :class:`McpClientSnippet` whose ``snippet`` field is a
 copy-paste-ready string for the corresponding MCP client. Snippets are derived
-from ``mcp-config.json`` (``public_url`` and ``auth_token``) so rotating the
-token or moving the deployment only requires editing that one file.
+from ``mcp-config.json`` (``public_url``) so moving the deployment only
+requires editing that one file.
 """
 
 from __future__ import annotations
@@ -17,13 +17,12 @@ def _pretty_json(payload: dict) -> str:
     return json.dumps(payload, indent=2)
 
 
-def _cursor(mcp_url: str, token: str) -> McpClientSnippet:
+def _cursor(mcp_url: str) -> McpClientSnippet:
     snippet = _pretty_json(
         {
             "mcpServers": {
                 "paper-search": {
                     "url": mcp_url,
-                    "headers": {"Authorization": f"Bearer {token}"},
                 }
             }
         }
@@ -42,11 +41,8 @@ def _cursor(mcp_url: str, token: str) -> McpClientSnippet:
     )
 
 
-def _claude_code(mcp_url: str, token: str) -> McpClientSnippet:
-    cmd = (
-        f'claude mcp add --transport http paper-search {mcp_url} '
-        f'--header "Authorization: Bearer {token}"'
-    )
+def _claude_code(mcp_url: str) -> McpClientSnippet:
+    cmd = f"claude mcp add --transport http paper-search {mcp_url}"
     return McpClientSnippet(
         id="claude_code",
         label="Claude Code",
@@ -60,7 +56,7 @@ def _claude_code(mcp_url: str, token: str) -> McpClientSnippet:
     )
 
 
-def _claude_desktop(mcp_url: str, token: str) -> McpClientSnippet:
+def _claude_desktop(mcp_url: str) -> McpClientSnippet:
     snippet = _pretty_json(
         {
             "mcpServers": {
@@ -70,8 +66,6 @@ def _claude_desktop(mcp_url: str, token: str) -> McpClientSnippet:
                         "-y",
                         "mcp-remote",
                         mcp_url,
-                        "--header",
-                        f"Authorization: Bearer {token}",
                     ],
                 }
             }
@@ -92,14 +86,13 @@ def _claude_desktop(mcp_url: str, token: str) -> McpClientSnippet:
     )
 
 
-def _opencode(mcp_url: str, token: str) -> McpClientSnippet:
+def _opencode(mcp_url: str) -> McpClientSnippet:
     snippet = _pretty_json(
         {
             "mcp": {
                 "paper-search": {
                     "type": "remote",
                     "url": mcp_url,
-                    "headers": {"Authorization": f"Bearer {token}"},
                     "enabled": True,
                 }
             }
@@ -118,13 +111,12 @@ def _opencode(mcp_url: str, token: str) -> McpClientSnippet:
     )
 
 
-def _lm_studio(mcp_url: str, token: str) -> McpClientSnippet:
+def _lm_studio(mcp_url: str) -> McpClientSnippet:
     snippet = _pretty_json(
         {
             "mcpServers": {
                 "paper-search": {
                     "url": mcp_url,
-                    "headers": {"Authorization": f"Bearer {token}"},
                 }
             }
         }
@@ -142,7 +134,7 @@ def _lm_studio(mcp_url: str, token: str) -> McpClientSnippet:
     )
 
 
-def _openai(mcp_url: str, token: str) -> McpClientSnippet:
+def _openai(mcp_url: str) -> McpClientSnippet:
     snippet = _pretty_json(
         {
             "tools": [
@@ -150,7 +142,6 @@ def _openai(mcp_url: str, token: str) -> McpClientSnippet:
                     "type": "mcp",
                     "server_label": "paper-search",
                     "server_url": mcp_url,
-                    "headers": {"Authorization": f"Bearer {token}"},
                     "require_approval": "never",
                 }
             ]
@@ -169,9 +160,7 @@ def _openai(mcp_url: str, token: str) -> McpClientSnippet:
     )
 
 
-def build_client_snippets(
-    *, public_url: str, mcp_url: str, token: str, token_present: bool
-) -> McpConfigResponse:
+def build_client_snippets(*, public_url: str, mcp_url: str) -> McpConfigResponse:
     builders = (
         _cursor,
         _claude_code,
@@ -180,10 +169,9 @@ def build_client_snippets(
         _lm_studio,
         _openai,
     )
-    clients = [build(mcp_url, token) for build in builders]
+    clients = [build(mcp_url) for build in builders]
     return McpConfigResponse(
         public_url=public_url,
         mcp_url=mcp_url,
-        auth_token_present=token_present,
         clients=clients,
     )

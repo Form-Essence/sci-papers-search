@@ -28,7 +28,7 @@ _UI_SALT = "paper-search-ui"
 
 
 def _signing_key(cfg: AppConfig) -> bytes:
-    raw = (cfg.session_secret or cfg.auth_token or "").strip()
+    raw = cfg.session_secret.strip()
     if raw:
         return hashlib.sha256(raw.encode("utf-8")).digest()
     return hashlib.sha256(f"{_UI_SALT}|{cfg.ui_password}".encode("utf-8")).digest()

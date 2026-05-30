@@ -4,12 +4,12 @@ One uvicorn process on one port serves three surfaces:
 
 - ``/``       → the built Next.js UI (static export in ``frontend/out``)
 - ``/api/*``  → FastAPI REST endpoints consumed by the UI
-- ``/mcp``    → paper-search-mcp streamable-http endpoint, bearer-token protected
+- ``/mcp``    → paper-search-mcp streamable-http endpoint (open, no auth)
 
 Host/port and CORS origins live in ``mcp-config.json`` at the repo root.
 Optional ``ui_password`` enables a server-side-only gate: the UI loads, but
 ``/api/*`` (except login/me/health/docs) requires an HMAC-signed session cookie
-after ``POST /api/login``, same pattern as RAG_horizon.
+after ``POST /api/login``.
 
 Run with: ``python -m uvicorn app.main:app --host <host> --port <port>``.
 """
@@ -37,7 +37,6 @@ from paper_search_mcp.server import mcp as paper_mcp  # noqa: E402
 
 from .aggregator import search_papers_with_timeout  # noqa: E402
 from .clients import build_client_snippets  # noqa: E402
-from .mcp_auth import BearerAuthMiddleware  # noqa: E402
 from .schemas import (  # noqa: E402
     DownloadRequest,
     DownloadResponse,
@@ -60,7 +59,7 @@ logging.basicConfig(level=logging.INFO)
 paper_mcp.settings.streamable_http_path = "/"
 
 # FastMCP defaults ``host=127.0.0.1``, which turns on MCP DNS rebinding protection
-# with localhost-only ``allowed_hosts``. Valid Bearer requests then fail with 421
+# with localhost-only ``allowed_hosts``. Requests then fail with 421
 # "Invalid Host header" when clients use ``public_url`` (e.g. Open Code over HTTPS).
 _parsed_public = urlparse(APP_CONFIG.public_url)
 _public_hostname = (_parsed_public.hostname or "").strip()
@@ -85,17 +84,6 @@ if _ts is not None and _ts.enable_dns_rebinding_protection and _public_hostname:
     )
 
 _mcp_app = paper_mcp.streamable_http_app()
-if APP_CONFIG.auth_token:
-    _mcp_app.add_middleware(
-        BearerAuthMiddleware,
-        token=APP_CONFIG.auth_token,
-        protect_prefix="/",
-    )
-else:
-    logger.warning(
-        "auth_token is empty in mcp-config.json — /mcp is unauthenticated. "
-        "Run ./scripts/gen-token.sh to generate one.",
-    )
 
 
 @asynccontextmanager
@@ -145,13 +133,7 @@ async def list_sources() -> SourcesResponse:
 async def mcp_config() -> McpConfigResponse:
     public = APP_CONFIG.public_url.rstrip("/")
     mcp_url = f"{public}/mcp"
-    token = APP_CONFIG.auth_token or "<YOUR_TOKEN>"
-    return build_client_snippets(
-        public_url=public,
-        mcp_url=mcp_url,
-        token=token,
-        token_present=bool(APP_CONFIG.auth_token),
-    )
+    return build_client_snippets(public_url=public, mcp_url=mcp_url)
 
 
 @app.post("/api/search", response_model=SearchResponse)

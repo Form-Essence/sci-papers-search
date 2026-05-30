@@ -49,7 +49,6 @@ class ServerConfig:
 
 @dataclass(frozen=True)
 class AppConfig:
-    auth_token: str
     public_url: str
     server: ServerConfig
     raw: dict[str, Any]
@@ -63,7 +62,7 @@ _LOADED: AppConfig | None = None
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(
-            f"Config file not found: {path}. Run scripts/gen-token.sh to create it."
+            f"Config file not found: {path}. Copy mcp-config.example.json to mcp-config.json."
         )
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -91,7 +90,6 @@ def load_config(path: Path | None = None, reload: bool = False) -> AppConfig:
     ] or ["*"]
 
     cfg = AppConfig(
-        auth_token=str(data.get("auth_token") or "").strip(),
         public_url=(str(data.get("public_url") or "").strip() or "http://localhost:3636"),
         server=ServerConfig(
             host=str(server_raw.get("host") or "0.0.0.0"),
@@ -108,9 +106,6 @@ def load_config(path: Path | None = None, reload: bool = False) -> AppConfig:
         value = str(api_keys.get(cfg_key) or "").strip()
         if value:
             os.environ.setdefault(env_name, value)
-
-    if cfg.auth_token:
-        os.environ.setdefault("PAPER_SEARCH_MCP_AUTH_TOKEN", cfg.auth_token)
 
     _LOADED = cfg
     logger.info("Loaded config from %s", target)

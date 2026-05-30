@@ -97,7 +97,6 @@ class McpClientSnippet(BaseModel):
 class McpConfigResponse(BaseModel):
     public_url: str
     mcp_url: str
-    auth_token_present: bool
     clients: List[McpClientSnippet]
 
 

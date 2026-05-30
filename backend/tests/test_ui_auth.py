@@ -11,7 +11,6 @@ from app.ui_auth import issue_ui_session_token, ui_session_token_valid
 class TestUiSessionTokens(unittest.TestCase):
     def setUp(self) -> None:
         self.cfg = AppConfig(
-            auth_token="test-mcp-token-for-signing",
             public_url="http://localhost:3636",
             server=ServerConfig(),
             raw={},
@@ -29,18 +28,24 @@ class TestUiSessionTokens(unittest.TestCase):
         token = issue_ui_session_token(self.cfg)
         self.assertFalse(ui_session_token_valid(self.cfg, token + "x"))
 
-    def test_different_password_changes_nothing_when_auth_token_set(self) -> None:
-        """Signing key prefers ``auth_token`` over ``ui_password``."""
-        other = AppConfig(
-            auth_token=self.cfg.auth_token,
+    def test_session_secret_isolates_signing_key(self) -> None:
+        """Signing key uses ``session_secret`` when set, else falls back to ``ui_password``."""
+        cfg_with_secret = AppConfig(
             public_url=self.cfg.public_url,
             server=self.cfg.server,
             raw={},
             ui_password="other-password",
-            session_secret="",
+            session_secret="shared-secret",
         )
-        token = issue_ui_session_token(self.cfg)
-        self.assertTrue(ui_session_token_valid(other, token))
+        cfg_same_secret = AppConfig(
+            public_url=self.cfg.public_url,
+            server=self.cfg.server,
+            raw={},
+            ui_password="yet-another-password",
+            session_secret="shared-secret",
+        )
+        token = issue_ui_session_token(cfg_with_secret)
+        self.assertTrue(ui_session_token_valid(cfg_same_secret, token))
 
 
 if __name__ == "__main__":

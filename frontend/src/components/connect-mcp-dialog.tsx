@@ -55,8 +55,7 @@ export function ConnectMcpDialog() {
         <DialogHeader>
           <DialogTitle>Connect to the Paper Search MCP</DialogTitle>
           <DialogDescription>
-            Pick your client below and copy the snippet. The token is the live
-            one from this server, so the configuration is ready to use.
+            Pick your client below and copy the ready-to-use snippet.
           </DialogDescription>
         </DialogHeader>
 
@@ -84,11 +83,6 @@ function ConnectTabs({ data }: { data: McpConfigResponse }) {
         <code className="rounded bg-muted px-1 py-0.5 font-mono">
           {data.mcp_url}
         </code>
-        {data.auth_token_present ? null : (
-          <span className="ml-2 text-amber-600 dark:text-amber-500">
-            No auth_token configured — snippets contain a placeholder.
-          </span>
-        )}
       </p>
 
       <Tabs

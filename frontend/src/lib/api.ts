@@ -59,7 +59,6 @@ export type McpClientSnippet = {
 export type McpConfigResponse = {
   public_url: string;
   mcp_url: string;
-  auth_token_present: boolean;
   clients: McpClientSnippet[];
 };
 

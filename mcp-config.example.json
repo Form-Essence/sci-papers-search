@@ -1,6 +1,5 @@
 {
-  "_comment": "Single source of truth. Copy to mcp-config.json, then run ./scripts/gen-token.sh to seed auth_token and regenerate client snippets. One Python process serves UI + /api/* + /mcp on server.{host,port}.",
-  "auth_token": "",
+  "_comment": "Copy to mcp-config.json and adjust. One Python process serves UI + /api/* + /mcp on server.{host,port}. The /mcp endpoint is open — no authentication required.",
   "_ui_password_hint": "Non-empty ui_password enables the web UI login screen (server-side only). Leave \"\" to disable.",
   "ui_password": "",
   "session_secret": "",
@@ -27,16 +26,14 @@
     "cursor_mcp_json": {
       "mcpServers": {
         "paper-search": {
-          "url": "http://localhost:3636/mcp",
-          "headers": { "Authorization": "Bearer <TOKEN>" }
+          "url": "http://localhost:3636/mcp"
         }
       }
     },
     "lm_studio_mcp_json": {
       "mcpServers": {
         "paper-search": {
-          "url": "http://localhost:3636/mcp",
-          "headers": { "Authorization": "Bearer <TOKEN>" }
+          "url": "http://localhost:3636/mcp"
         }
       }
     },
@@ -45,7 +42,6 @@
         "paper-search": {
           "type": "remote",
           "url": "http://localhost:3636/mcp",
-          "headers": { "Authorization": "Bearer <TOKEN>" },
           "enabled": true
         }
       }
@@ -56,11 +52,10 @@
           "type": "mcp",
           "server_label": "paper-search",
           "server_url": "http://localhost:3636/mcp",
-          "headers": { "Authorization": "Bearer <TOKEN>" },
           "require_approval": "never"
         }
       ]
     },
-    "curl_smoke_test": "curl -N -X POST 'http://localhost:3636/mcp' -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
+    "curl_smoke_test": "curl -N -X POST 'http://localhost:3636/mcp' -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
   }
 }

@@ -23,24 +23,8 @@ if [ ! -d ".venv" ] || [ ! -x ".venv/bin/python" ]; then
     exit 1
 fi
 
-NEED_TOKEN=0
 if [ ! -f "mcp-config.json" ]; then
-    NEED_TOKEN=1
-elif ! .venv/bin/python - <<'PY'
-import json, sys
-from pathlib import Path
-try:
-    data = json.loads(Path("mcp-config.json").read_text(encoding="utf-8"))
-    sys.exit(0 if str(data.get("auth_token") or "").strip() else 1)
-except Exception:
-    sys.exit(1)
-PY
-then
-    NEED_TOKEN=1
-fi
-
-if [ "$NEED_TOKEN" = "1" ]; then
-    echo "No bearer token found in mcp-config.json — generating one..."
+    echo "mcp-config.json not found — creating from example..."
     ./scripts/gen-token.sh
 fi
 
@@ -84,7 +68,7 @@ echo ""
 echo "✓ paper-search started successfully!"
 echo ""
 echo "  • Web UI + REST  http://${DISPLAY_HOST}:${PORT}/"
-echo "  • MCP endpoint   http://${DISPLAY_HOST}:${PORT}/mcp   (Bearer token required)"
+echo "  • MCP endpoint   http://${DISPLAY_HOST}:${PORT}/mcp   (open, no auth)"
 echo ""
 echo "Run './status.sh' to check status"
 echo "Run './log.sh' to view logs"

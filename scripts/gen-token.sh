@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
-# Generate a random bearer token for the unified paper-search server and
-# (re)write it into mcp-config.json. Running twice rotates the secret.
-# Preserves existing `server.*` values (host, port, cors_origins, api_keys).
+# Initialize mcp-config.json from the example if it doesn't exist yet.
+# Preserves existing server.* and API key values on re-runs.
 #
 # Optional:
-#   PAPER_SEARCH_MCP_PUBLIC_URL   Override the public URL baked into the
-#                                 client snippets (e.g. your Cloudflare
-#                                 Tunnel hostname).
+#   PAPER_SEARCH_MCP_PUBLIC_URL   Override the public URL in the config.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,7 +21,6 @@ PAPER_SEARCH_MCP_PUBLIC_URL="${PAPER_SEARCH_MCP_PUBLIC_URL:-}" \
   "$PY" <<'PYEOF'
 import json
 import os
-import secrets
 from pathlib import Path
 
 config_path = Path(os.environ["CONFIG_FILE"])
@@ -38,14 +34,10 @@ elif example_path.exists():
 else:
     data = {}
 
-token = secrets.token_urlsafe(32)
-public_url = (override_url or data.get("public_url") or "http://localhost:3636").rstrip("/")
+# Remove legacy auth_token if present.
+data.pop("auth_token", None)
 
-data["_comment"] = (
-    "Single source of truth. Server reads `server`; clients paste from `clients`. "
-    "Regenerate the token with ./scripts/gen-token.sh."
-)
-data["auth_token"] = token
+public_url = (override_url or data.get("public_url") or "http://localhost:3636").rstrip("/")
 data["public_url"] = public_url
 
 # Migrate from the old three-server shape if it's still present.
@@ -72,23 +64,16 @@ server.setdefault("api_keys", {
 })
 
 mcp_url = f"{public_url}/mcp"
-auth_header = f"Bearer {token}"
 
 data["clients"] = {
     "cursor_mcp_json": {
         "mcpServers": {
-            "paper-search": {
-                "url": mcp_url,
-                "headers": {"Authorization": auth_header},
-            }
+            "paper-search": {"url": mcp_url}
         }
     },
     "lm_studio_mcp_json": {
         "mcpServers": {
-            "paper-search": {
-                "url": mcp_url,
-                "headers": {"Authorization": auth_header},
-            }
+            "paper-search": {"url": mcp_url}
         }
     },
     "opencode_config": {
@@ -96,7 +81,6 @@ data["clients"] = {
             "paper-search": {
                 "type": "remote",
                 "url": mcp_url,
-                "headers": {"Authorization": auth_header},
                 "enabled": True,
             }
         }
@@ -107,14 +91,12 @@ data["clients"] = {
                 "type": "mcp",
                 "server_label": "paper-search",
                 "server_url": mcp_url,
-                "headers": {"Authorization": auth_header},
                 "require_approval": "never",
             }
         ]
     },
     "curl_smoke_test": (
         f"curl -N -X POST '{mcp_url}' "
-        f"-H 'Authorization: {auth_header}' "
         f"-H 'Content-Type: application/json' "
         f"-H 'Accept: application/json, text/event-stream' "
         f"-d '{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}}'"
@@ -123,12 +105,9 @@ data["clients"] = {
 
 config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 print(f"wrote {config_path}")
-print(f"token: {token}")
 print(f"public_url: {public_url}")
 PYEOF
 
-chmod 600 "$CONFIG_FILE" 2>/dev/null || true
-
 echo ""
-echo "Next: restart the paper-search server so it picks up the new token:"
+echo "Next: restart the paper-search server to pick up the new config:"
 echo "  ./stop.sh && ./start.sh"
